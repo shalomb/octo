@@ -1,0 +1,64 @@
+#!/bin/bash
+
+set -eu -o pipefail
+
+: ${XDG_CACHE_HOME:=~/.cache}
+
+#! locate-viminfo - return the path of viminfo that we cached
+function locate-viminfo {
+  local v_viminfo="${XDG_CACHE_HOME}/v.viminfo"
+
+  # our file is a symlink to the real viminfo
+  if [[ -e $v_viminfo ]]; then
+    echo "$v_viminfo"
+    return 0
+  fi
+
+  # ask vim to tell us where the viminfo is
+  local tmpfile=$(mktemp)
+  for line in "redir! > $tmpfile" "set viminfo" "redir END" "quit"; do
+    echo ":$line"
+  done > "$tmpfile"
+  "$VI" -v -R -m -M -n --noplugin -i NONE -s "$tmpfile" /dev/null &>/dev/null
+
+  # extract the path to the viminfo file
+  local viminfo=$(grep -oiP '(?<=,n).+' "$tmpfile")
+  viminfo="${viminfo/~\//$HOME/}"
+  rm -f "$tmpfile"
+
+  if [[ ! -f $viminfo ]]; then
+    echo >&2 "viminfo '$viminfo' missing or inaccessible?"
+    return 1
+  fi
+
+  # cache the viminfo location
+  ln -sf "$viminfo" "$v_viminfo"
+  echo "$v_viminfo"
+  return 0
+}
+
+function vim-fru {
+  local viminfo=$(locate-viminfo)
+  local terminator=$'\n'
+  # parse the viminfo for file locations
+  while getopts zt: opt; do
+    case "$opt" in
+      z) unset terminator;;
+      t) terminator="$OPTARG";;
+    esac
+  done
+  shift "$((OPTIND-1))"   # Discard the options and sentinel --
+
+  while IFS=" " read -r line; do
+    [[ ${line:0:1} = ">" ]] || continue
+    file=${line:2}
+    file="${file/~\//$HOME/}"
+    if [[ -n ${terminator-} ]]; then
+      printf '%s%s' "$file" "$terminator"
+    else
+      printf '%s\0' "$file"
+    fi
+  done < "$viminfo"
+}
+
+"${0##*/}" "$@"

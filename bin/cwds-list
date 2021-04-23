@@ -1,0 +1,59 @@
+#!/bin/bash
+
+set -eu
+
+: ${XDG_CACHE_HOME:="$HOME/.cache"}
+: ${cwds_list:="$XDG_CACHE_HOME/cwds"}
+
+update=0
+verbose=0
+while getopts 'uv' opt; do
+  case "$opt" in
+    u) update=1 ;;
+    v) verbose=1 ;;
+  esac
+done
+shift $((OPTIND -1))
+
+if (( update == 1 )); then
+{
+  [[ -e $cwds_list ]] && cat "$cwds_list"
+
+  pgrep -u "${LOGNAME:-$USER}" |
+    xargs -I{} readlink -f /proc/{}/cwd |
+    grep "^$HOME/" |
+    sed -r "s@^$HOME/@~/@" |
+    sort |
+    uniq -c |
+    sort -nr
+} | perl -lane '
+    use List::Util qw[sum];
+    if ( defined $F[1] ) {
+      push @{ $f{$F[1]}{score} }, $F[0];
+    }
+
+    # order directories by using a weighted score that is computed using
+    # the average of the number of occurrences and time of recent use
+    # this ensures
+    # - directories used most recently come up top
+    # - where there are ties, the directory most-used wins
+    END {
+      printf "%05.4f %s\n", @$_
+        for sort { $b->[0] <=> $a->[0] }
+        map [ sum(
+                @{$f{$_}{score}},
+                sum( @{$f{$_}{score}}, time )/time
+              )/2,
+              $_
+            ],
+        keys %f
+    }
+  ' > "$cwds_list.tmp"
+  mv "$cwds_list"{.tmp,}
+fi
+
+if (( verbose == 1 )); then
+  cat "$cwds_list"
+else
+  awk '{ print $2 }' "$cwds_list"
+fi
