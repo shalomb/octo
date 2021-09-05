@@ -69,7 +69,7 @@ function v {
   done < <(
     printf '%s\0' "$PWD"
     vim-fru -z
-    git ls-files -z
+    git ls-files -z 2>/dev/null
   )
 
   if (( list_files == 1 )); then
@@ -78,11 +78,11 @@ function v {
   fi
 
   git_status='
-            git status --porcelain --no-column  --find-renames \
-                --ignore-submodules=none | \
-              sed -r  -e "s/^\s*[a-z?!]+\s+//i" \
-                -e "s/^[a-z]+\s+->\s+//i"
-          '
+    git status --porcelain --no-column  --find-renames \
+        --ignore-submodules=none 2>/dev/null | \
+      sed -r  -e "s/^\s*[a-z?!]+\s+//i" \
+        -e "s/^[a-z]+\s+->\s+//i"
+  '
 
   # display the fzf/bat selection/preview
   local item=$(
