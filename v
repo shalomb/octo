@@ -156,10 +156,9 @@ function v {
   )
 
   [[ $item == ~* ]] && item="${item/~\//$HOME/}"
-  if [[ -e $item && -f $item ]]; then
+  if [[ -e $item ]]; then
     "$EDITOR" "$item"; return $?
   fi
-  echo "$item"
 }
 
 # delegate execution to the functions above
