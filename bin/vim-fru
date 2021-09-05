@@ -4,6 +4,8 @@ set -eu -o pipefail
 
 : ${XDG_CACHE_HOME:=~/.cache}
 
+VI=$(command -v vi)
+
 #! locate-viminfo - return the path of viminfo that we cached
 function locate-viminfo {
   local v_viminfo="${XDG_CACHE_HOME}/v.viminfo"
