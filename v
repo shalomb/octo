@@ -18,14 +18,18 @@ BOOKMARKS="${CONFIG_DIR}/dirs"
 HISTORY_FILE="$CACHE_DIR/history"
 
 HELP_FILE="$CONFIG_DIR/help"
-[[ ! -e $HELP_FILE ]] && cat <<-EOF > "$HELP_FILE"
+cat <<-EOF > "$HELP_FILE"
 ?: help
-ctrl-e: files            ctrl-d: directories
+ctrl-d: directories      ctrl-e: files
 ctrl-g: git's files      ctrl-s: git's changed files
-ctrl-y: locate's files   ctrl-m: select
-ctrl-p: up               ctrl-n: down
-ctrl-f: preview-down     ctrl-b: preview-up
-ctrl-v: vim              ctrl-o: original query
+ctrl-y: locate's files
+ctrl-o: omni-suggestions (the kitchen sink!)
+
+ctrl-r: reload original query
+ctrl-m: select (for editing in $EDITOR)
+
+ctrl-n: down             ctrl-p: up
+ctrl-b: preview-up       ctrl-f: preview-down
 
 Search syntax
   foo     Fuzzy match (default)
@@ -119,7 +123,6 @@ function v {
         --bind 'ctrl-p:up' \
         --bind "ctrl-r:reload('$0' -l {q})" \
         --bind 'ctrl-s:reload(eval "$git_status")' \
-        --bind 'ctrl-v:execute(/usr/bin/vi . < /dev/tty > /dev/tty 2>&1)' \
         --bind 'ctrl-z:ignore' \
         --bind "?:execute(less '${HELP_FILE}' < /dev/tty > /dev/tty 2>&1)" \
         --history "$HISTORY_FILE" \
