@@ -2,6 +2,8 @@
 
 set -eu
 
+[[ ${DEBUG-} ]] && set -xv
+
 : ${XDG_CACHE_HOME:="$HOME/.cache"}
 projects_list="$XDG_CACHE_HOME/projects.list"
 
@@ -19,7 +21,7 @@ git(){
 }
 
 projects_find() {
-  find ~/* -iname ".git" |
+  find -L ~/* -iname ".git" |
     sed -r 's@/.git@@' |
     while read d; do
       dir="${d##$HOME}"
@@ -38,7 +40,9 @@ projects_find() {
 }
 
 if (( update == 1 )) || [[ ! -e $projects_list ]]; then
-  projects_find > "$projects_list"
+  tmp=$(mktemp)
+  trap "mv '$tmp' '$projects_list'" EXIT
+  projects_find > "$tmp"
 else
   cat "$projects_list"
 fi

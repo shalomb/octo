@@ -2,6 +2,8 @@
 
 set -eu
 
+[[ ${DEBUG-} ]] && set -xv
+
 : ${XDG_CACHE_HOME:="$HOME/.cache"}
 : ${cwds_list:="$XDG_CACHE_HOME/cwds"}
 
