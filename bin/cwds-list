@@ -52,8 +52,10 @@ if (( update == 1 )); then
   mv "$cwds_list"{.tmp,}
 fi
 
-if (( verbose == 1 )); then
-  cat "$cwds_list"
-else
-  awk '{ print $2 }' "$cwds_list"
+if [[ -e "$cwds_list" ]]; then
+  if (( verbose == 1 )); then
+    cat "$cwds_list"
+  else
+    awk '{ print $2 }' "$cwds_list"
+  fi
 fi
