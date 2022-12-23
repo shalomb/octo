@@ -4,7 +4,9 @@ set -eu
 
 [[ ${DEBUG-} ]] && set -xv
 
+: ${XDG_CONFIG_HOME:="$HOME/.config"}
 : ${XDG_CACHE_HOME:="$HOME/.cache"}
+projects_dir_list="$XDG_CONFIG_HOME/projects-dirs.list"
 projects_list="$XDG_CACHE_HOME/projects.list"
 
 update=0
@@ -20,29 +22,46 @@ git(){
   command git "$@" 2>/dev/null
 }
 
+projects-dirs-list() {
+  { while read -r dir; do
+      echo "${dir/#\~\//$HOME\/}"
+    done < "$projects_dir_list"
+    echo "$HOME/projects/"
+  } | awk '!a[$0]++'
+}
+
 projects_find() {
-  find -L ~/* -iname ".git" |
-    sed -r 's@/.git@@' |
-    while read d; do
-      dir="${d##$HOME}"
-      dir="~$dir"
-      if cd "$d"; then
-        remotes=$(git remote -v | awk '/fetch/{ print $2 }')
-        if [[ ${remotes-} ]]; then
-          while read -r remote; do
-            printf '%s\t%s\n' "$dir" "$remote"
-          done <<< "$remotes"
-        else
-          printf '%s\t%s\n' "$dir" "$(git branch --show-current)"
+  if [[ ! -e $projects_dir_list ]]; then
+    echo >&2 "Error: $projects_dir_list missing"
+  fi
+  while read -r glob; do
+    echo >&2 "Scanning $glob ..."
+    find -L "$glob" -iname ".git" |
+      sed -r 's@/.git@@' |
+      while read -r d; do
+        dir="${d##"$HOME"}"
+        dir="~$dir"
+        if cd "$d"; then
+          remotes=$(git remote -v | awk '/fetch/{ print $2 }')
+          if [[ ${remotes-} ]]; then
+            while read -r remote; do
+              printf '%s\t%s\n' "$dir" "$remote"
+            done <<< "$remotes"
+          else
+            printf '%s\t%s\n' "$dir" "$(git branch --show-current)"
+          fi
         fi
-      fi
-    done
+      done
+  done < <( projects-dirs-list )
 }
 
 if (( update == 1 )) || [[ ! -e $projects_list ]]; then
-  tmp=$(mktemp)
-  trap "mv '$tmp' '$projects_list'" EXIT
-  projects_find > "$tmp"
+  tmpfile=$(mktemp)
+  cleanup() {
+    mv "$tmpfile" "$projects_list"
+  }
+  trap cleanup EXIT
+  projects_find > "$tmpfile"
 else
   cat "$projects_list"
 fi
