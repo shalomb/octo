@@ -6,27 +6,32 @@ set -eu
 
 : ${XDG_CONFIG_HOME:="$HOME/.config"}
 : ${XDG_CACHE_HOME:="$HOME/.cache"}
+
 projects_dir_list="$XDG_CONFIG_HOME/projects-dirs.list"
+touch "$projects_dir_list"
 projects_list="$XDG_CACHE_HOME/projects.list"
+touch "$projects_list"
 
 update=0
 while getopts 'u' opt; do
   case "$opt" in
-    u) update=1
-      ;;
+  u)
+    update=1
+    ;;
   esac
 done
-shift $((OPTIND -1))
+shift $((OPTIND - 1))
 
-git(){
+git() {
   command git "$@" 2>/dev/null
 }
 
 projects-dirs-list() {
-  { while read -r dir; do
+  {
+    while read -r dir; do
       echo "${dir/#\~\//$HOME\/}"
-    done < "$projects_dir_list"
-    echo "$HOME/projects/"
+    done <"$projects_dir_list"
+    echo "$HOME/projects"
   } | awk '!a[$0]++'
 }
 
@@ -36,32 +41,34 @@ projects_find() {
   fi
   while read -r glob; do
     echo >&2 "Scanning $glob ..."
-    find -L "$glob" -iname ".git" |
+    find -L $glob -iname ".git" |
       sed -r 's@/.git@@' |
-      while read -r d; do
-        dir="${d##"$HOME"}"
+      while read d; do
+        dir="${d##$HOME}"
         dir="~$dir"
         if cd "$d"; then
           remotes=$(git remote -v | awk '/fetch/{ print $2 }')
           if [[ ${remotes-} ]]; then
             while read -r remote; do
               printf '%s\t%s\n' "$dir" "$remote"
-            done <<< "$remotes"
+            done <<<"$remotes"
           else
             printf '%s\t%s\n' "$dir" "$(git branch --show-current)"
           fi
         fi
       done
-  done < <( projects-dirs-list )
+  done < <(projects-dirs-list)
 }
 
-if (( update == 1 )) || [[ ! -e $projects_list ]]; then
+if ((update == 1)) || [[ ! -e $projects_list ]]; then
   tmpfile=$(mktemp)
   cleanup() {
     mv "$tmpfile" "$projects_list"
   }
   trap cleanup EXIT
-  projects_find > "$tmpfile"
+  projects_find >"$tmpfile"
 else
   cat "$projects_list"
 fi
+
+# vim:ts=2 sw=2 list et
